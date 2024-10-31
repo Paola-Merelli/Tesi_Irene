@@ -1,0 +1,82 @@
+################################### script per LCP analysis ##########################################
+### cambiare layer di resistenza in base al modello (RLI originale, modificato o noRLI)
+
+
+#carica resistance layer e source layer (parchi nazionali)
+#final_resistance_ita_NpPAs <- raster("prova_ita_iba/produced_layers/final_resistance_ita_NpPAs.tiff")
+#np_ita <- vect("prova_ita_iba/produced_layers/np_ita.shp")
+#ita <- vect("prova_ita_iba/produced_layers/ita.shp")
+#ita_raster <- rast("prova_ita_iba/produced_layers/ita_rast.tiff")
+
+
+#calcola centroidi dei parchi nazionali
+
+centroidi_ita <- centroids(np_ita, inside=FALSE)
+
+resistance_resampled <- aggregate(final_resistance_ita, fact = 2, fun = mean)
+
+
+### Inverto i valori di resistenza per ottenere la conduttanza (1/resistenza)
+
+conductance_raster <- 1 / resistance_resampled
+conductance_raster_RL <- raster(conductance_raster)
+has_na_or_infinite <- any(is.na(conductance_raster_RL[]) | is.infinite(conductance_raster_RL[]))
+
+if (has_na_or_infinite) {
+  cat("The raster contains NA or infinite values.\n")
+} else {
+  cat("The raster does not contain NA or infinite values.\n")
+}
+
+conductance_raster_RL[is.na(conductance_raster_RL)] <- 1e-10
+conductance_raster_RL[!is.finite(conductance_raster_RL)] <- 1e10
+
+
+### Crea un transitional layer (se ti interessa capire meglio cosa sia un "transition layer" chiedimi che è troppo lungo da scrivere <3)
+trans <- transition(conductance_raster_RL, transitionFunction = mean, directions = 8)
+# Correggo per tenere conto della distanza
+trans_corr <- geoCorrection(trans)
+
+### funzione per applicare least cost path 
+calcolaPercorso <- function(start, end, n = 1) {
+  paths <- list()
+  for (i in 1:n) {
+    path <- shortestPath(trans_corr, start, end, output = "SpatialLines")
+    paths[[i]] <- path
+  }
+  return(paths)
+}
+
+n_percorsi <- 1  
+
+### creare lista coppie uniche centroidi (parchi nazionali)
+centroid_indices <- 1:nrow(centroidi_ita)
+pairs <- combn(centroid_indices, 2)  # Generate all unique pairs of indices
+
+percorsi <- list()
+
+### creare un for loop per applicare la funzione che calcola il percorso con costo minore tra tutte le coppie uniche di parchi naizonali
+
+for (k in 1:ncol(pairs)) {
+  i <- pairs[1, k]
+  j <- pairs[2, k]
+  
+  start <- terra::crds(centroidi_ita)[i, , drop = F ]
+  end <- terra::crds(centroidi_ita)[j, , drop = F ]
+  
+  percorso <- calcolaPercorso(start, end, n = n_percorsi)
+  percorsi <- append(percorsi, percorso)
+}
+
+
+np_ita_sf <- st_as_sf(np_ita)
+centroidi_ita_sf <- st_centroid(np_ita_sf)
+centroidi_ita_df <- as.data.frame(st_coordinates(centroidi_ita_sf))
+
+### paths_sf è il prodotto della funzione, è uno shape file con tutti i 325 percorsi
+
+paths_sf <- do.call(rbind, lapply(percorsi, function(line) st_as_sf(line)))
+paths_sf <- st_as_sf(paths_sf)
+print(paths_sf)
+st_crs(paths_sf) <- 3035
+st_write(paths_sf, "prova_corridoi_iba/paths_NpPAs.shp", driver = "ESRI Shapefile")
