@@ -103,8 +103,8 @@ summary(paths_df$num_PAs)
 
 head(paths_df)
 #alla fine paths_df dovrebbe avere come colonne: FID / length_km / costs / cost_per_km / num_IBAs / num_PAs
-
-writeVector(paths, "prova_ita_iba/prova_corridoi_iba/paths_final/paths_Np_nopa.shp")
+write.csv("il/tuo/percorso/paths_df.csv)
+#writeVector(paths, "prova_ita_iba/prova_corridoi_iba/paths_final/paths_Np_nopa.shp")
 
 
 
@@ -152,6 +152,7 @@ intersections_pa_union <- terra::intersect(paths_union, ita_pa) %>% as.data.fram
 paths_union$num_PAs <- intersections_pa_union %>% distinct(ID) %>% nrow()
 paths_union_df <- as.data.frame(paths_union)
 
+write.csv(paths_union_df, "il/tuo/percorso/paths_union_df.csv")
 writeVector(paths_union, "prova_ita_iba/prova_corridoi_iba/paths_final/paths_Np_nopa_union.shp")
 
 
