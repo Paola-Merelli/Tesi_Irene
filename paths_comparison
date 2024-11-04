@@ -114,7 +114,7 @@ write.csv("il/tuo/percorso/paths_df.csv)
 ################### length
 paths_union <- vect("prova_ita_iba/prova_corridoi_iba/paths_final/direct/paths_Np_nopa_union.shp") %>% st_as_sf()
 paths_union <- st_as_sf(paths_union)
-paths_union$lenght_km <- as.numeric(st_length(paths_union) / 1000)  # Lunghezza totale in km
+paths_union$length_km <- as.numeric(st_length(paths_union) / 1000)  # Lunghezza totale in km
 st_write(paths_union, "prova_ita_iba/prova_corridoi_iba/paths_final/paths_Np_nopa_union.shp")
 
 ################### costo 
@@ -133,7 +133,7 @@ calculate_cost_for_paths_direct <- function(path_union, resistance_raster) {
 
 # Apply the function to the single union path
 paths_union$cost <- calculate_cost_for_paths_direct(paths_union, final_resistance_ita)
-cost_per_km_union <- paths_union$cost / paths_union$lenght_km
+cost_per_km_union <- paths_union$cost / paths_union$length_km
 paths_union$cost_per_km <- cost_per_km_union
 paths_union_df <- as.data.frame(paths_union)
 paths_union$cost <- paths_union$cost / 1e6
@@ -215,3 +215,38 @@ iba_corr_df <- as.data.frame(iba_corr)
 
 write.csv(iba_corr_df, "prova_ita_iba/prova_corridoi_iba/stat/iba_corr_Np_nopa.csv", row.names = FALSE)
 plot(iba_corr_df$num_corridors, iba_corr_df$RLI)
+
+
+############################################################
+
+df_RLI_mod <- read.csv("il/tuo/percorso/df_RLI_mod.csv")
+df_RLI_org <- read.csv("il/tuo/percorso/df_RLI_org.csv")
+df_no_RLI <- read.csv("il/tuo/percorso/df_no_RLI.csv")
+df_RLI_mod$cat <- "RLI_mod" 
+df_RLI_org$cat <- "RLI_org" 
+df_no_RLI$cat <- "no_RLI 
+
+df <- rbind(df_RLI_mod, df_RLI_org, df_no_RLI)
+# df ha 325+325+325 righe 
+
+df_RLI_mod_union <- read.csv("il/tuo/percorso/df_RLI_mod_union.csv")
+df_RLI_org_union <- read.csv("il/tuo/percorso/df_RLI_org_union.csv")
+df_no_RLI_union <- read.csv("il/tuo/percorso/df_no_RLI_union.csv")
+df_RLI_mod_union$cat <- "RLI_mod" 
+df_RLI_org_union$cat <- "RLI_org" 
+df_no_RLI_union$cat <- "no_RLI 
+
+df_union <- rbind(df_RLI_mod_union, df_RLI_org_union, df_no_RLI_union)
+# df_union ha 3 righe
+
+
+ggplot(df, aes(x = "", y = cost_per_km)) +  
+  geom_boxplot(fill = "#156082", color = "white") +
+  labs(title = "Paths Costs/Km", 
+       y = "Cost per Km") +
+  ylim(10000, 400000) +
+  facet_wrap(~ cat, nrow = 3, ncol = 1, scales = "free_x") + 
+  theme_dark() +
+  theme(axis.text.x = element_blank(),  
+        axis.ticks.x = element_blank())  
+
